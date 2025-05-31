@@ -1,0 +1,26 @@
+@Service
+public class PurchaseOrderService {
+
+    @Autowired
+    private SystemGeneratedPurchaseOrderRepository repository;
+
+    public double calculateSystemCost(LocalDate startDate, LocalDate endDate) {
+        List<SystemGeneratedPurchaseOrder> allRecords =
+            repository.findCostByMaterialNameAndType(startDate, endDate);
+
+        // Group by rawMaterialName + rawMaterialType and pick one cost per group
+        Map<String, SystemGeneratedPurchaseOrder> grouped = allRecords.stream()
+            .collect(Collectors.toMap(
+                s -> s.getRawMaterialName() + "|" + s.getRawMaterialType(), // composite key
+                s -> s,
+                (existing, replacement) -> existing // pick the first one (ignore duplicates)
+            ));
+
+        // Sum distinct material costs
+        double sysCost = grouped.values().stream()
+            .mapToDouble(SystemGeneratedPurchaseOrder::getMaterialCost)
+            .sum();
+
+        return sysCost;
+    }
+}
